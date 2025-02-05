@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
+from transformers import SiglipModel, SiglipProcessor, CLIPVisionConfig
 
 
 class SiGLIPVisionTower(nn.Module):
@@ -10,17 +10,14 @@ class SiGLIPVisionTower(nn.Module):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device_map = "auto"  # Set to auto for now, will set up args later
         self.dtype = torch.bfloat16
-        model_name = "google/siglip-base-patch16-256-i18n"
-        self.image_processor = CLIPImageProcessor.from_pretrained(
-            "google/siglip-base-patch16-256-i18n"
+        model_name = "google/siglip-base-patch16-224"
+        self.image_processor = SiglipProcessor.from_pretrained(
+            "google/siglip-base-patch16-224"
         )
-        self.vision_tower = CLIPVisionModel.from_pretrained(
+        self.vision_tower = SiglipModel.from_pretrained(
             model_name, device_map=self.device_map
         )
         self.vision_tower.requires_grad_(False)  # Freeze encoder
-
-    def feature_select(self):
-        select_layer = -2  # Taken from LLaVA
 
     @torch.no_grad()
     def forward(self, images):
@@ -28,16 +25,14 @@ class SiGLIPVisionTower(nn.Module):
         if type(images) is list:
             image_feats = []
             for image in images:
-                image_forward_out = self.vision_tower(
-                    image.to(device=self.device, dtype=self.dtype).unsqueeze(0),
+                image_forward_out = self.vision_tower.get_image_features(
+                    **image.to(device=self.device, dtype=self.dtype).unsqueeze(0),
                     output_hidden_states=True,
                 )
-                image_feats.append(
-                    image_forward_out
-                )  # TODO:Not sure what feature_select does in LLaVA,
+                image_feats.append(image_forward_out)
         else:
-            image_feats = self.vision_tower(
-                images.to(device=self.device, dtype=self.dtype),
+            image_feats = self.vision_tower.get_image_features(
+                **images.to(device=self.device, dtype=self.dtype),
                 output_hidden_states=True,
             )
         return image_feats
