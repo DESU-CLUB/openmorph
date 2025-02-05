@@ -19,6 +19,9 @@ class SiGLIPVisionTower(nn.Module):
         )
         self.vision_tower.requires_grad_(False)  # Freeze encoder
 
+    def feature_select(self):
+        select_layer = -2  # Taken from LLaVA
+
     @torch.no_grad()
     def forward(self, images):
         # Modified from LLaVA/llava/model/multimodal_encoder/clip_encoder.py
